@@ -16,7 +16,7 @@ const char TAB = 0x09;
 const char SPACE = 0x20;
 const char NEWLINE = 0x0a;
 
-const char delimiters[4] = {SPACE, TAB, NEWLINE};
+const char delimiters[4] = "\t \n";
 
 char *args[MAX_ARG_COUNT];
 
@@ -25,11 +25,14 @@ char *args[MAX_ARG_COUNT];
  */
 void print_cwd() 
 {
+    if (getcwd(cwd, sizeof(cwd)) == NULL) 
+    {
+      perror("getcwd() error");
+    }
     printf("%s: ", cwd);
     fflush(stdout);
     return;
 }
-
 /**
  * @brief Executes command stored in args[]
  * 
@@ -37,6 +40,14 @@ void print_cwd()
  */
 void exec_command(int n_args) 
 {
+    if(strcmp(args[0], "cd")==0) {
+        if(args[1]==0) {
+            printf("CD needs 1 argument\n");
+            return;
+        }
+        chdir(args[1]);
+        return;
+    }
     int stat;
     pid_t pid = fork();
     if (pid == 0) 
@@ -56,7 +67,6 @@ void exec_command(int n_args)
             if(args[i] != NULL) 
             {
                 printf(" %s", args[i]);
-                memset(args[i],0,sizeof(*args[i]));
             }
         }
         printf("] = %d\n", WEXITSTATUS(stat));
@@ -92,10 +102,12 @@ int accept_new_command()
         }
         if(strlen(token)>0) 
         {
-            args[arg_idx] = token;
+            args[arg_idx] = (char*) malloc(strlen(token));
+            stpcpy(args[arg_idx],token);
             arg_idx++;
         }
     }
+    free(cmd_buf);
     return arg_idx;
 }
 
@@ -112,6 +124,7 @@ int main()
         print_cwd();
         n_args = accept_new_command();
         exec_command(n_args);
+        memset(args, 0, sizeof(args));
     }
     return 0;
 }
