@@ -2,8 +2,8 @@ CC=gcc
 CFLAGS= -I
 
 make: ./src/*.c
-	$(CC) -pthread -g -o flush ./src/*.c 
-
+	$(CC) -lreadline -g -o flush ./src/*.c 
+	./flush
 clean:
 	-rm -f *.o
 

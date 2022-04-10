@@ -17,75 +17,87 @@ const char TAB = 0x09;
 const char SPACE = 0x20;
 const char NEWLINE = '\n';
 
-char *args[MAX_COMMAND_SIZE][MAX_ARG_COUNT];
-char cmd[MAX_COMMAND_SIZE];
+const char delimiters[4] = {SPACE, TAB, NEWLINE};
+
+char *args[MAX_COMMAND_SIZE];
+
+/**
+ * @brief prints current working directory
+ */
 void print_cwd() {
     printf("%s: ", cwd);
     fflush(stdout);
     return;
 }
-void accept_new_command() {
-    char command[MAX_COMMAND_SIZE];
-    int cur_arg = 0;
-    int len = 0;
-    fflush(stdout);
-    memset(command,0,sizeof(command));
-    while(read(0,buf,sizeof(buf))>0){
-        switch (buf[0])
-        {
-        case TAB:
-        case SPACE:
-            *args[cur_arg] = malloc(sizeof(command));
-            memcpy(*args[cur_arg], command, sizeof(command));
-            memset(command,0,sizeof(command));
-            len = 0;
-            cur_arg +=1;
-            break;
-        case EOT: // CTRL+D
-            _exit(0);
-            break;
-        case NEWLINE: // End of command
-            *args[cur_arg] = malloc(sizeof(command));
-            memcpy(*args[cur_arg], command, sizeof(command));
-            
-            int stat;
-            pid_t pid;
 
-            if (fork() == 0) {
-                execv(*args[0], args[1]);
-                exit(0);
+/**
+ * @brief Executes command stored in args[]
+ * 
+ * @param n_args Number of arguments in args
+ */
+void exec_command(int n_args) {
+    int stat;
+    pid_t pid = fork();
+    if (pid == 0) {
+        execvp(args[0], args);
+        exit(0);
+    }
+    else {
+        wait(NULL);
+    }
+    if (WIFEXITED(stat)) {
+        printf("Exit status [%s", args[0]);
+        for(int i=1;i<=n_args;i++) {
+            if(args[i] != NULL) {
+                printf(" %s", args[i]);
+                memset(args[i],0,sizeof(*args[i]));
             }
-            else {
-                waitpid(0,&stat, 0);
-            }
-            if (WIFEXITED(stat)) {
-                printf("Exit status [%s", *args[0]);
-                for(int i=1;i<=cur_arg;i++) {
-                    if(*args[i] != NULL) {
-                        printf(" %s", *args[i]);
-                        free(*args[i]);
-                    }
-                }
-                printf("] = %d\n", WEXITSTATUS(stat));
-            }
-            cur_arg = 0;
-            len = 0;
-            buf[0] = ' ';
-            print_cwd();
-        default:
-            command[len] = buf[0];
-            len+=1;
-            break;
+        }
+        printf("] = %d\n", WEXITSTATUS(stat));
+    }
+}
+
+/**
+ * @brief Parses line from stdin into *args
+ * 
+ * @return int number of arguments parsed
+ */
+int accept_new_command() {
+    char *cmd_buf;
+    size_t buf_size = MAX_COMMAND_SIZE;
+    cmd_buf = (char *)malloc(buf_size * sizeof(char));
+    
+    int n = getline(&cmd_buf, &buf_size, stdin);
+    
+    if(n == -1) {
+        exit(0);
+    }
+    
+    char *token;
+    int arg_idx = 0;
+    while (1) {
+        token = strsep(&cmd_buf, delimiters);
+        if(token == NULL) {
+            return arg_idx;
+        }
+        if(strlen(token)>0) {
+            args[arg_idx] = token;
+            arg_idx++;
         }
     }
-    return;
+    return arg_idx;
 }
+
 int main() {
-    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
       perror("getcwd() error");
+    }
     memcpy(base_cwd, cwd, sizeof(cwd));
-    print_cwd();
-    
-    accept_new_command();
+    int n_args = 0;
+    while(1) {
+        print_cwd();
+        n_args = accept_new_command();
+        exec_command(n_args);
+    }
     return 0;
 }
