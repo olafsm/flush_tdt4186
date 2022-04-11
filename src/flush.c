@@ -41,6 +41,23 @@ void print_cwd()
  */
 void exec_command(int n_args) 
 {
+    int in_index = 0, out_index = 0;
+    for (int i=0;i<n_args;i++) {
+        if (strcmp(args[i], "<")==0) {
+            if(i >= n_args-1) {
+                printf("Specify path for input redirection");
+            }
+            in_index = i+1;
+            args[i] = NULL;
+        }
+        else if(strcmp(args[i], ">")==0) {
+            if(i >= n_args-1) {
+                printf("Specify path for output redirection");
+            }
+            out_index = i+1;
+            args[i] = NULL;
+        }
+    }
     if(strcmp(args[0], "cd")==0) {
         if(args[1]==0) {
             chdir(root_dir);
@@ -51,8 +68,17 @@ void exec_command(int n_args)
     }
     int stat;
     pid_t pid = fork();
-    if (pid == 0) 
+    if (pid == 0)
     {
+        int stdout_fd = fileno(stdout);
+
+        // redirect stdin & stdout before executing command
+        if(in_index!=0) {
+            freopen(args[in_index], "r", stdin); 
+        }
+        if(out_index!=0) {
+            freopen(args[out_index], "a+", stdout);
+        }
         execvp(args[0], args);
         exit(0);
     }
