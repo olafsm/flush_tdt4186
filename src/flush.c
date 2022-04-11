@@ -5,7 +5,7 @@
 #include<sys/wait.h>
 
 #define MAX_PATH_LENGTH 4096
-#define MAX_COMMAND_SIZE 64
+#define MAX_COMMAND_SIZE 256
 #define MAX_ARG_COUNT 64
 
 char cwd[MAX_PATH_LENGTH];
@@ -16,7 +16,7 @@ const char TAB = 0x09;
 const char SPACE = 0x20;
 const char NEWLINE = 0x0a;
 
-const char delimiters[4] = "\t \n";
+const char delimiters[4] = {EOT, SPACE, NEWLINE};
 
 char *args[MAX_ARG_COUNT];
 
@@ -102,13 +102,24 @@ int accept_new_command()
         }
         if(strlen(token)>0) 
         {
-            args[arg_idx] = (char*) malloc(strlen(token));
-            stpcpy(args[arg_idx],token);
+            args[arg_idx] = strdup(token);
             arg_idx++;
         }
     }
     free(cmd_buf);
     return arg_idx;
+}
+
+/**
+ * @brief free alloced argument strings and zero args[]
+ * 
+ * @param n_args
+ */
+void free_args(int n_args) {
+    for(int i=0;i<n_args;i++) {
+        free(args[i]);
+    }
+    memset(args, 0, sizeof(args));
 }
 
 int main() 
@@ -124,7 +135,7 @@ int main()
         print_cwd();
         n_args = accept_new_command();
         exec_command(n_args);
-        memset(args, 0, sizeof(args));
+        free_args(n_args);
     }
     return 0;
 }
