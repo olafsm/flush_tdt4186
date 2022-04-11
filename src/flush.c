@@ -9,7 +9,7 @@
 #define MAX_ARG_COUNT 64
 
 char cwd[MAX_PATH_LENGTH];
-char base_cwd[MAX_PATH_LENGTH];
+char root_dir[MAX_PATH_LENGTH];
 
 const char EOT = 0x04; //CTRL-D
 const char TAB = 0x09;
@@ -33,6 +33,7 @@ void print_cwd()
     fflush(stdout);
     return;
 }
+
 /**
  * @brief Executes command stored in args[]
  * 
@@ -42,7 +43,7 @@ void exec_command(int n_args)
 {
     if(strcmp(args[0], "cd")==0) {
         if(args[1]==0) {
-            printf("CD needs 1 argument\n");
+            chdir(root_dir);
             return;
         }
         chdir(args[1]);
@@ -122,20 +123,23 @@ void free_args(int n_args) {
     memset(args, 0, sizeof(args));
 }
 
+/**
+ * @brief accepts new commands from stdin and executes them
+ * 
+ * @return int
+ */
 int main() 
 {
-    if (getcwd(cwd, sizeof(cwd)) == NULL) 
-    {
-      perror("getcwd() error");
-    }
-    memcpy(base_cwd, cwd, sizeof(cwd));
+    print_cwd();
+    memcpy(root_dir, cwd, sizeof(cwd));
+    
     int n_args = 0;
     while(1) 
     {
-        print_cwd();
         n_args = accept_new_command();
         exec_command(n_args);
         free_args(n_args);
+        print_cwd();
     }
     return 0;
 }
