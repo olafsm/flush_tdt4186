@@ -41,23 +41,29 @@ void print_cwd()
  */
 void exec_command(int n_args) 
 {
+
+    // Check for redirection
     int in_index = 0, out_index = 0;
     for (int i=0;i<n_args;i++) {
         if (strcmp(args[i], "<")==0) {
             if(i >= n_args-1) {
-                printf("Specify path for input redirection");
+                printf("Specify path for input redirection\n");
+                return;
             }
             in_index = i+1;
             args[i] = NULL;
         }
         else if(strcmp(args[i], ">")==0) {
             if(i >= n_args-1) {
-                printf("Specify path for output redirection");
+                printf("Specify path for output redirection\n");
+                return;
             }
             out_index = i+1;
             args[i] = NULL;
         }
     }
+
+    // CD Command
     if(strcmp(args[0], "cd")==0) {
         if(args[1]==0) {
             chdir(root_dir);
@@ -66,6 +72,9 @@ void exec_command(int n_args)
         chdir(args[1]);
         return;
     }
+
+
+    // Execute command in child process
     int stat;
     pid_t pid = fork();
     if (pid == 0)
@@ -73,21 +82,34 @@ void exec_command(int n_args)
         int stdout_fd = fileno(stdout);
 
         // redirect stdin & stdout before executing command
-        if(in_index!=0) {
+        if(in_index!=0) 
             freopen(args[in_index], "r", stdin); 
-        }
-        if(out_index!=0) {
+        if(out_index!=0)
             freopen(args[out_index], "a+", stdout);
-        }
+
         execvp(args[0], args);
+        
         exit(0);
+    }
+    if (pid == -1) 
+    {
+        perror("fork() error");
     }
     else 
     {
-        wait(NULL);
+        wait(&stat);
     }
-    if (WIFEXITED(stat)) 
+
+    // add back < and > to args for printing status
+    if(in_index!=0)
     {
+        args[in_index-1] = strdup("<");
+    }
+    if(out_index!=0)
+    {
+        args[out_index-1] = strdup(">");
+    }
+    if (WIFEXITED(stat)) {
         printf("Exit status [%s", args[0]);
         for(int i=1;i<=n_args;i++) 
         {
@@ -98,6 +120,7 @@ void exec_command(int n_args)
         }
         printf("] = %d\n", WEXITSTATUS(stat));
     }
+
 }
 
 /**
