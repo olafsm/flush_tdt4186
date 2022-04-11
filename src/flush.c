@@ -75,7 +75,7 @@ void exec_command(int n_args)
 
 
     // Execute command in child process
-    int stat;
+    int status;
     pid_t pid = fork();
     if (pid == 0)
     {
@@ -97,19 +97,20 @@ void exec_command(int n_args)
     }
     else 
     {
-        wait(&stat);
+        wait(&status);
     }
 
-    // add back < and > to args for printing status
-    if(in_index!=0)
-    {
-        args[in_index-1] = strdup("<");
-    }
-    if(out_index!=0)
-    {
-        args[out_index-1] = strdup(">");
-    }
-    if (WIFEXITED(stat)) {
+    if (WIFEXITED(status)) {
+        // add back < and > to args for printing status
+        if(in_index!=0)
+        {
+            args[in_index-1] = strdup("<");
+        }
+        if(out_index!=0)
+        {
+            args[out_index-1] = strdup(">");
+        }
+        
         printf("Exit status [%s", args[0]);
         for(int i=1;i<=n_args;i++) 
         {
@@ -118,7 +119,7 @@ void exec_command(int n_args)
                 printf(" %s", args[i]);
             }
         }
-        printf("] = %d\n", WEXITSTATUS(stat));
+        printf("] = %d\n", WEXITSTATUS(status));
     }
 
 }
