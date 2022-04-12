@@ -3,6 +3,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<sys/wait.h>
+#include"linked_list.h"
 
 #define MAX_PATH_LENGTH 4096
 #define MAX_COMMAND_SIZE 256
@@ -19,6 +20,21 @@ const char NEWLINE = 0x0a;
 const char delimiters[4] = {EOT, SPACE, NEWLINE};
 
 char *args[MAX_ARG_COUNT];
+char *cmd;
+
+struct list* active_pids;
+
+/**
+ * @brief print cmd and free the allocated string
+ */
+void print_stat_and_free_cmd(int s, char* command) {
+    if(command[strlen(command)-1] == '\n') {
+        command[strlen(command)-1]='\0';
+    }
+    printf("Exit status [%s] = %d\n", command, s);
+    free(command);
+    return;
+}
 
 /**
  * @brief prints current working directory without waiting for newline
@@ -41,7 +57,6 @@ void print_cwd()
  */
 void exec_command(int n_args) 
 {
-
     // Check for redirection
     int in_index = 0, out_index = 0;
     for (int i=0;i<n_args;i++) {
@@ -63,7 +78,7 @@ void exec_command(int n_args)
         }
     }
 
-    // CD Command
+    // CD Command doesnt need to be a child process
     if(strcmp(args[0], "cd")==0) {
         if(args[1]==0) {
             chdir(root_dir);
@@ -73,9 +88,14 @@ void exec_command(int n_args)
         return;
     }
 
+    // Check for background task
+    int bg = 0;
+    if(cmd[strlen(cmd)-2] == '&') {
+        bg = 1;
+    }
 
     // Execute command in child process
-    int status;
+    int stat;
     pid_t pid = fork();
     if (pid == 0)
     {
@@ -86,43 +106,64 @@ void exec_command(int n_args)
             freopen(args[in_index], "r", stdin); 
         if(out_index!=0)
             freopen(args[out_index], "a+", stdout);
-
         execvp(args[0], args);
         
         exit(0);
     }
-    if (pid == -1) 
+    else if (pid == -1) 
     {
         perror("fork() error");
     }
-    else 
+    else if (!bg)
     {
-        wait(&status);
+        wait(&stat);
+        if (WIFEXITED(stat)) 
+        {
+            print_stat_and_free_cmd(WEXITSTATUS(stat), cmd);
+        }
+    } else 
+    {
+        add_node(active_pids, pid, cmd);
     }
-
-    if (WIFEXITED(status)) {
-        // add back < and > to args for printing status
-        if(in_index!=0)
-        {
-            args[in_index-1] = strdup("<");
-        }
-        if(out_index!=0)
-        {
-            args[out_index-1] = strdup(">");
-        }
-        
-        printf("Exit status [%s", args[0]);
-        for(int i=1;i<=n_args;i++) 
-        {
-            if(args[i] != NULL) 
-            {
-                printf(" %s", args[i]);
-            }
-        }
-        printf("] = %d\n", WEXITSTATUS(status));
-    }
-
 }
+
+/**
+ * @brief Returns exit status if process has exited, -1 if not
+ * 
+ * @param PID 
+ * @return int 
+ */
+int get_zombie_status(int PID) {
+    int stat;
+    if (waitpid(PID, &stat, WNOHANG))
+    {
+        if (WIFEXITED(stat))
+        {
+            return WEXITSTATUS(stat);
+        }
+    }
+    return -1;
+}
+
+/**
+ * @brief Walks the linked list and removes any zombie processes
+ * 
+ * @param list 
+ */
+void remove_zombie_nodes (struct list *list) {
+    struct node *n = active_pids->head->next;
+    struct node *p = active_pids->head;
+    while(n != NULL) {
+        int stat = get_zombie_status(n->PID);
+        if(stat != -1) 
+        {
+            print_stat_and_free_cmd(stat,n->command);
+            p->next = n->next;
+        }
+        p = n;
+        n = n->next;
+    }
+};
 
 /**
  * @brief Parses line from stdin into *args
@@ -131,12 +172,14 @@ void exec_command(int n_args)
  */
 int accept_new_command() 
 {
-    char *cmd_buf;
     size_t buf_size = MAX_COMMAND_SIZE;
-    cmd_buf = (char *)malloc(buf_size * sizeof(char));
-    
-    int n = getline(&cmd_buf, &buf_size, stdin);
-    
+    char* temp_cmd;
+    int n;
+
+    cmd = (char *)malloc(buf_size * sizeof(char));
+    n = getline(&cmd, &buf_size, stdin);
+    temp_cmd = strdup(cmd);
+
     if(n == -1) 
     {
         exit(0);
@@ -146,18 +189,21 @@ int accept_new_command()
     int arg_idx = 0;
     while (1) 
     {
-        token = strsep(&cmd_buf, delimiters);
+        token = strsep(&temp_cmd, delimiters);
         if(token == NULL) 
         {
             return arg_idx;
         }
         if(strlen(token)>0) 
         {
+            if(token[strlen(token)-1] == '&') {
+                token[strlen(token)-1] = '\0';
+            }
             args[arg_idx] = strdup(token);
             arg_idx++;
         }
     }
-    free(cmd_buf);
+    free(temp_cmd);
     return arg_idx;
 }
 
@@ -172,7 +218,6 @@ void free_args(int n_args) {
     }
     memset(args, 0, sizeof(args));
 }
-
 /**
  * @brief accepts new commands from stdin and executes them
  * 
@@ -180,6 +225,8 @@ void free_args(int n_args) {
  */
 int main() 
 {
+    active_pids = create_list();
+    print_list(active_pids);
     print_cwd();
     memcpy(root_dir, cwd, sizeof(cwd));
     
@@ -189,6 +236,8 @@ int main()
         n_args = accept_new_command();
         exec_command(n_args);
         free_args(n_args);
+        remove_zombie_nodes(active_pids);
+        print_list(active_pids);
         print_cwd();
     }
     return 0;
