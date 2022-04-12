@@ -162,9 +162,11 @@ void remove_zombie_nodes (struct list *list) {
         {
             print_stat_and_free_cmd(stat,n->command);
             p->next = n->next;
+            free(n);
+        } else {
+            p = n;
         }
-        p = n;
-        n = n->next;
+        n = p->next;
     }
 };
 
