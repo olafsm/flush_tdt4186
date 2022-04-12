@@ -106,8 +106,11 @@ void exec_command(int n_args)
             freopen(args[in_index], "r", stdin); 
         if(out_index!=0)
             freopen(args[out_index], "a+", stdout);
-        execvp(args[0], args);
-        
+        if(strcmp(args[0], "jobs") == 0) {
+            print_list(active_pids);
+        } else {
+            execvp(args[0], args);
+        }   
         exit(0);
     }
     else if (pid == -1) 
@@ -226,19 +229,16 @@ void free_args(int n_args) {
 int main() 
 {
     active_pids = create_list();
-    print_list(active_pids);
-    print_cwd();
     memcpy(root_dir, cwd, sizeof(cwd));
     
     int n_args = 0;
     while(1) 
     {
+        print_cwd();
         n_args = accept_new_command();
         exec_command(n_args);
         free_args(n_args);
         remove_zombie_nodes(active_pids);
-        print_list(active_pids);
-        print_cwd();
     }
     return 0;
 }
