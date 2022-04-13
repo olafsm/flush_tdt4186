@@ -56,7 +56,6 @@ void print_cwd()
       perror("getcwd() error");
     }
     printf(CYAN "%s: " WHITE, cwd);
-    fflush(stdout);
     return;
 }
 
@@ -213,7 +212,7 @@ int accept_new_command()
         if(strlen(token)>0) 
         {
             if(token[strlen(token)-1] == '&') {
-                token[strlen(token)-1] = '\0';
+                token[strlen(token)-1] = '\n';
             }
             args[arg_idx] = strdup(token);
             arg_idx++;
