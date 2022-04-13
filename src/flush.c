@@ -9,6 +9,12 @@
 #define MAX_COMMAND_SIZE 256
 #define MAX_ARG_COUNT 64
 
+#define WHITE "\x1B[0m"
+#define RED "\x1B[31m"
+#define GREEN "\x1B[32m"
+#define CYAN "\x1B[36m"
+#define YELLOW "\x1B[33m"
+
 char cwd[MAX_PATH_LENGTH];
 char root_dir[MAX_PATH_LENGTH];
 
@@ -17,7 +23,7 @@ const char TAB = 0x09;
 const char SPACE = 0x20;
 const char NEWLINE = 0x0a;
 
-const char delimiters[4] = {EOT, SPACE, NEWLINE};
+const char delimiters[4] = {EOT, SPACE, NEWLINE, '\0'};
 
 char *args[MAX_ARG_COUNT];
 char *cmd;
@@ -31,7 +37,11 @@ void print_stat_and_free_cmd(int s, char* command) {
     if(command[strlen(command)-1] == '\n') {
         command[strlen(command)-1]='\0';
     }
-    printf("Exit status [%s] = %d\n", command, s);
+    char* color = GREEN;
+    if(s) {
+        color = RED;
+    }
+    printf(YELLOW "Exit status [%s] = %s%d\n"WHITE, command,color , s);
     free(command);
     return;
 }
@@ -45,7 +55,7 @@ void print_cwd()
     {
       perror("getcwd() error");
     }
-    printf("%s: ", cwd);
+    printf(CYAN "%s: " WHITE, cwd);
     fflush(stdout);
     return;
 }
@@ -223,6 +233,7 @@ void free_args(int n_args) {
     }
     memset(args, 0, sizeof(args));
 }
+
 /**
  * @brief accepts new commands from stdin and executes them
  * 
