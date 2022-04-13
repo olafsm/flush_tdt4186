@@ -23,7 +23,7 @@ const char TAB = 0x09;
 const char SPACE = 0x20;
 const char NEWLINE = 0x0a;
 
-const char delimiters[4] = {EOT, SPACE, NEWLINE, '\0'};
+const char delimiters[5] = {EOT, SPACE, NEWLINE, TAB, '\0'};
 
 char *args[MAX_ARG_COUNT];
 char *cmd;
@@ -41,7 +41,7 @@ void print_stat_and_free_cmd(int s, char* command) {
     if(s) {
         color = RED;
     }
-    printf(YELLOW "Exit status [%s] = %s%d\n"WHITE, command,color , s);
+    printf(YELLOW"Exit status [%s] = %s%d"WHITE"\n", command,color , s);
     free(command);
     return;
 }
@@ -112,10 +112,11 @@ void exec_command(int n_args)
         int stdout_fd = fileno(stdout);
 
         // redirect stdin & stdout before executing command
-        if(in_index!=0) 
+        if(in_index) 
             freopen(args[in_index], "r", stdin); 
-        if(out_index!=0)
-            freopen(args[out_index], "a+", stdout);
+        if(out_index)
+            freopen(args[out_index], "w", stdout);
+
         if(strcmp(args[0], "jobs") == 0) {
             print_list(active_pids);
         } else {
@@ -241,16 +242,25 @@ void free_args(int n_args) {
  */
 int main() 
 {
-    active_pids = create_list();
+    if (getcwd(cwd, sizeof(cwd)) == NULL) 
+    {
+      perror("getcwd() error");
+    }
     memcpy(root_dir, cwd, sizeof(cwd));
+
+    active_pids = create_list();
+    
     
     int n_args = 0;
     while(1) 
     {
         print_cwd();
         n_args = accept_new_command();
-        exec_command(n_args);
-        free_args(n_args);
+        if(n_args) // Segfaults if arg is empty 
+        {
+            exec_command(n_args);
+            free_args(n_args);
+        }
         remove_zombie_nodes(active_pids);
     }
     return 0;

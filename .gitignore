@@ -1,2 +1,5 @@
 flush
 flush.dSYM/
+.vscode
+x
+x.c
