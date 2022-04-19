@@ -213,10 +213,11 @@ int accept_new_command()
         {
             if(token[strlen(token)-1] == '&') {
                 token[strlen(token)-1] = '\0';
-                continue;
             }
-            args[arg_idx] = strdup(token);
-            arg_idx++;
+            if(strlen(token)) {
+                args[arg_idx] = strdup(token);
+                arg_idx++;
+            }
         }
     }
     free(temp_cmd);
