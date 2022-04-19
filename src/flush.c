@@ -209,15 +209,14 @@ int accept_new_command()
         {
             return arg_idx;
         }
-        if(strlen(token)>0) 
+        if(token[strlen(token)-1] == '&') 
         {
-            if(token[strlen(token)-1] == '&') {
-                token[strlen(token)-1] = '\0';
-            }
-            if(strlen(token)) {
-                args[arg_idx] = strdup(token);
-                arg_idx++;
-            }
+            token[strlen(token)-1] = '\0';
+        }
+        if(strlen(token)) 
+        {
+            args[arg_idx] = strdup(token);
+            arg_idx++;
         }
     }
     free(temp_cmd);
